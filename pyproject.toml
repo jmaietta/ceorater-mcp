@@ -14,5 +14,10 @@ dependencies = [
     "httpx>=0.27.0",
 ]
 
+[project.urls]
+Homepage = "https://www.ceorater.com"
+Documentation = "https://www.ceorater.com/api-docs.html"
+Repository = "https://github.com/jmaietta/ceorater-mcp"
+
 [project.scripts]
 ceorater-mcp = "ceorater_mcp.server:main"

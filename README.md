@@ -2,7 +2,7 @@
 
 Model Context Protocol server for CEORater — CEO performance analytics for LLM agents.
 
-Requires a CEORater API subscription ($99/month). Get your key at [ceorater.com](https://www.ceorater.com).
+Requires a CEORater API subscription ($99/month). [Subscribe and get your API key](https://www.ceorater.com/api-docs.html).
 
 ## Install
 

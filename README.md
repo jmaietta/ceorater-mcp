@@ -1,6 +1,6 @@
 # CEORater MCP Server
 
-Model Context Protocol server for CEORater — CEO performance analytics for LLM agents.
+Model Context Protocol server for CEORater.com — CEO performance analytics for AI agents.
 
 Requires a CEORater API subscription ($99/month). Get your key at [ceorater.com](https://www.ceorater.com).
 

@@ -1,0 +1,10 @@
+README.md
+pyproject.toml
+ceorater_mcp/__init__.py
+ceorater_mcp/server.py
+ceorater_mcp.egg-info/PKG-INFO
+ceorater_mcp.egg-info/SOURCES.txt
+ceorater_mcp.egg-info/dependency_links.txt
+ceorater_mcp.egg-info/entry_points.txt
+ceorater_mcp.egg-info/requires.txt
+ceorater_mcp.egg-info/top_level.txt

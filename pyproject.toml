@@ -1,10 +1,10 @@
 [build-system]
 requires = ["setuptools>=68.0"]
-build-backend = "setuptools.backends._legacy:_Backend"
+build-backend = "setuptools.build_meta"
 
 [project]
 name = "ceorater-mcp"
-version = "0.1.0"
+version = "0.2.0"
 description = "MCP server for CEORater — CEO performance analytics for LLM agents"
 readme = "README.md"
 license = {text = "MIT"}

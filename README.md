@@ -1,45 +1,149 @@
 # CEORater MCP Server
 
-## Status: Paused
+CEO performance data for AI agents, over the Model Context Protocol.
 
-This MCP server is currently paused because the CEORater public API has been parked.
+How the stock did over each CEO's tenure, what the S&P 500 did over that same
+window, how long they have been in the job, and what they were paid — for 500+
+US public companies.
 
-The package should not be used for new integrations. The old implementation depended on API keys, the former `api.ceorater.com` service, and public API endpoints that are no longer being promoted or supported.
+**Free. No account, no API key, no signup.**
 
-## Why This Repository Is Preserved
+---
 
-This repository is being kept for historical reference in case CEORater reintroduces a public API or MCP integration later.
+## Install
 
-Keeping the code archived preserves:
+Needs Python 3.10 or newer.
 
-- the prior MCP server implementation,
-- the previous tool definitions,
-- the old API integration pattern,
-- package metadata and installation history.
+### Windows
 
-## Current CEORater Access
+```
+pip install ceorater-mcp
+```
 
-Use the main CEORater website:
+### macOS
 
-https://www.ceorater.com
+```
+brew install pipx
+pipx install ceorater-mcp
+```
 
-CEORater is currently positioned as a research dataset and web application, not as a public API or MCP service.
+Homebrew's Python refuses `pip install` into the system environment, so plain
+`pip install` fails there with *externally-managed-environment*.
 
-## Previous Tools
+### Linux
 
-The paused implementation exposed these MCP tools:
+```
+sudo apt install pipx      # Debian, Ubuntu
+sudo dnf install pipx      # Fedora, RHEL
+pipx install ceorater-mcp
+```
 
-- `ceo_lookup`
-- `ceo_search`
-- `ceo_list`
-- `ceo_meta`
+---
 
-These tools are not currently supported.
+## Connect it to Claude Desktop
 
-## Future Reactivation
+Add this to your `claude_desktop_config.json`:
 
-If CEORater reintroduces a public API, this repository can be unarchived and updated to point at the new supported API surface, authentication model, data-refresh schedule, and terms.
+```json
+{
+  "mcpServers": {
+    "ceorater": {
+      "command": "ceorater-mcp"
+    }
+  }
+}
+```
 
-## License
+That file lives at:
 
-MIT
+| | |
+|---|---|
+| macOS | `~/Library/Application Support/Claude/claude_desktop_config.json` |
+| Windows | `%APPDATA%\Claude\claude_desktop_config.json` |
+
+Restart Claude Desktop. No `env` block and no key — that is the whole config.
+
+---
+
+## Tools
+
+| Tool | What it does |
+|---|---|
+| `ceo_lookup` | One company by ticker. Always returns an array. |
+| `ceo_list` | Every CEO, or filter by `sector`, `industry`, `founder` |
+| `ceo_search` | Loose substring match across company, ticker, CEO, sector, industry |
+| `ceo_sectors` | The 11 GICS sectors and their company counts |
+| `ceo_industries` | GICS sub-industries, optionally within one sector |
+| `ceo_meta` | Row count, field list, data freshness |
+
+Ask things like *"Which founder-led tech CEOs beat the S&P 500 over their
+tenure?"* — the agent can call `ceo_list` with `sector="Information Technology"`
+and `founder=true` and do the comparison itself.
+
+---
+
+## The fields
+
+Exactly the ten www.ceorater.com displays.
+
+| Field | Meaning |
+|---|---|
+| `ticker` | Exchange ticker |
+| `company` | Registrant name as filed |
+| `ceo` | Chief executive |
+| `founder` | Whether this CEO founded the company |
+| `sector` | GICS sector |
+| `industry` | GICS sub-industry |
+| `tenure_years` | Years in the role |
+| `total_return_pct` | Total stock return across the tenure, as a percentage |
+| `spy_return_pct` | The S&P 500 over that same period |
+| `compensation_musd` | Reported compensation, in millions of USD |
+
+Returns are already percentages: `545800` means +545,800%. Nothing to convert.
+
+**Sectors and industries are S&P's own GICS values**, matched company by company
+on SEC CIK rather than ticker, because tickers get reassigned and CIKs do not.
+Eleven sectors, 128 sub-industries.
+
+**Co-CEOs get a record each.** Oracle, KKR, Globe Life, Lululemon and Netflix
+each return two people with their own start dates and returns, which is why
+`ceo_lookup` always returns a list.
+
+---
+
+## Upgrading from 0.x
+
+Version 0.x required a `CEORATER_API_KEY` and called a paid API that no longer
+exists — every tool in it fails. Version 1.0 needs no key and is not
+configurable; remove any `CEORATER_API_KEY` from your MCP config.
+
+The scores are gone. CEORaterScore, AlphaScore, CompScore and RevenueCAGRScore
+have been retired from the product, along with Avg Annual TSR, which was
+computed as total return divided by tenure rather than compounded and
+overstated every multi-year record. What remains is reported figures only.
+
+---
+
+## Running it as a remote server
+
+```
+MCP_TRANSPORT=http PORT=8080 ceorater-mcp
+```
+
+Serves streamable HTTP, stateless, so it sits behind Cloud Run or similar
+without session affinity. No per-user credentials to manage.
+
+---
+
+## The underlying API
+
+The server is a thin client over a public HTTP API you can call directly:
+
+```
+curl -s https://api.ceorater.com/api/v1/ceo/NVDA
+```
+
+Documented at https://www.ceorater.com/api-docs.html
+Rate limit 100 requests per 15 minutes per IP.
+
+CEORater publishes reported figures and makes no investment recommendations.

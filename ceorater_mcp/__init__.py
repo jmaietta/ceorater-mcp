@@ -1,2 +1,3 @@
-"""CEORater MCP Server — CEO performance analytics for LLM agents."""
-__version__ = "0.1.0"
+"""CEORater MCP Server — CEO performance data for AI agents. Free, no API key."""
+
+__version__ = "1.0.0"

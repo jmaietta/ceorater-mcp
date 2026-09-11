@@ -4,8 +4,8 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "ceorater-mcp"
-version = "0.2.0"
-description = "MCP server for CEORater — CEO performance analytics for LLM agents"
+version = "1.0.0"
+description = "MCP server for CEORater — CEO performance for AI agents. Free, no API key."
 readme = "README.md"
 license = {text = "MIT"}
 requires-python = ">=3.10"

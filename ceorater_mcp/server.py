@@ -21,6 +21,8 @@ from typing import Any
 
 import httpx
 
+from ceorater_mcp import __version__
+
 # mcp 2.0 renamed FastMCP to MCPServer. Both are supported: a user may have
 # either pinned, and a fresh pip install now resolves to 2.x -- which is how
 # this shipped broken the first time, working in a dev environment that still
@@ -37,6 +39,7 @@ TIMEOUT = 30
 
 mcp = _Server(
     "ceorater",
+    version=__version__,
     instructions=(
         "CEO performance for 500+ US public companies: how the stock did over "
         "each CEO's tenure, what the S&P 500 did over that same window, how long "

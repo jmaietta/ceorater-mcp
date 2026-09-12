@@ -40,7 +40,11 @@ pipx install ceorater-mcp
 
 ---
 
-## Connect it to Claude Desktop
+## Connect it to a client
+
+MCP is an open standard — Claude, ChatGPT, Cursor, VS Code and other clients all
+speak it. Claude Desktop, Cursor and VS Code take a server config file in this
+form; other clients add servers their own way.
 
 Add this to your `claude_desktop_config.json`:
 

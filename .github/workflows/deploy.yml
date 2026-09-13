@@ -1,0 +1,61 @@
+# Push to main -> build the Dockerfile -> push to Artifact Registry -> the
+# Cloud Run service `ceorater-mcp` in us-central1 picks up the new image.
+# That service is https://mcp.ceorater.com/mcp.
+#
+# No keys anywhere: the job trades its GitHub OIDC token for the deployer
+# service account through Workload Identity Federation, and that trust is
+# scoped to this one repository. The account can push to one registry and
+# update one service, nothing else.
+#
+# Scaling, memory, the API key and the domain are properties of the service,
+# set once at creation; `--image` leaves them alone. If the new container
+# fails its startup probe, `services update` fails, this run goes red, and the
+# previous revision keeps serving.
+name: Deploy to Cloud Run
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+  id-token: write
+
+env:
+  IMAGE: us-central1-docker.pkg.dev/ceorater/cloud-run-source-deploy/ceorater-mcp
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: projects/697273542938/locations/global/workloadIdentityPools/github/providers/github-oidc
+          service_account: ceorater-mcp-deployer@ceorater.iam.gserviceaccount.com
+
+      - uses: google-github-actions/setup-gcloud@v2
+
+      - name: Build and push
+        run: |
+          gcloud auth configure-docker us-central1-docker.pkg.dev --quiet
+          docker build --tag "$IMAGE:$GITHUB_SHA" --tag "$IMAGE:latest" .
+          docker push --all-tags "$IMAGE"
+
+      - name: Deploy
+        run: |
+          gcloud run services update ceorater-mcp \
+            --region us-central1 \
+            --image "$IMAGE:$GITHUB_SHA" \
+            --update-labels "commit-sha=$GITHUB_SHA,managed-by=github-actions" \
+            --quiet
+
+      - name: Verify what is serving
+        run: |
+          serving=$(gcloud run services describe ceorater-mcp --region us-central1 \
+            --format 'value(spec.template.spec.containers[0].image)')
+          echo "serving: $serving"
+          test "$serving" = "$IMAGE:$GITHUB_SHA"
+          url=$(gcloud run services describe ceorater-mcp --region us-central1 --format 'value(status.url)')
+          curl --fail --silent --show-error "$url/health"

@@ -1,5 +1,5 @@
 # The hosted server at https://mcp.ceorater.com/mcp. One image, built by Cloud
-# Build on every push to main (see cloudbuild.yaml), run on Cloud Run.
+# Build on every push to main (.github/workflows/deploy.yml), run on Cloud Run.
 FROM python:3.12-slim
 
 ENV PYTHONDONTWRITEBYTECODE=1 \

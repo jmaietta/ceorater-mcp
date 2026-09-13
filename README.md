@@ -161,7 +161,8 @@ MCP_TRANSPORT=http PORT=8080 ceorater-mcp
 
 Serves streamable HTTP, stateless, so it sits behind Cloud Run or similar
 without session affinity. No per-user credentials to manage. The `Dockerfile`
-and `cloudbuild.yaml` here are what build and deploy mcp.ceorater.com.
+and `.github/workflows/deploy.yml` here are what build and deploy
+mcp.ceorater.com.
 
 The API rate-limits by IP, and a shared server makes every user's calls from
 one address. mcp.ceorater.com carries a key the API recognises; a server you

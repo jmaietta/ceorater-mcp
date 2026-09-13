@@ -1,0 +1,6 @@
+# The container's exact dependency set. pyproject.toml keeps a looser range for
+# pip users; the hosted server runs precisely what was tested. 1.0.0 shipped
+# broken because a fresh install resolved mcp to a release with a renamed API.
+mcp[cli]==1.27.1
+httpx==0.28.1
+uvicorn==0.52.4

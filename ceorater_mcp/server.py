@@ -7,7 +7,8 @@ billing gateway that no longer exists; every tool in it now fails.
 
 Runs two ways:
   stdio (default)          local install, e.g. from Claude Desktop
-  MCP_TRANSPORT=http       remote server, one instance serving everyone
+  MCP_TRANSPORT=http       remote server, one instance serving everyone.
+                           This is what https://mcp.ceorater.com/mcp runs.
 
 Every tool returns the same ten fields www.ceorater.com displays. The scores
 this server used to expose -- CEORaterScore, AlphaScore, CompScore,
@@ -20,6 +21,8 @@ import os
 from typing import Any
 
 import httpx
+from starlette.requests import Request
+from starlette.responses import JSONResponse, PlainTextResponse
 
 from ceorater_mcp import __version__
 
@@ -35,11 +38,18 @@ except ImportError:  # mcp < 2
     _MCP2 = False
 
 API_BASE = "https://api.ceorater.com/api/v1"
+DOCS_URL = "https://www.ceorater.com/api-docs.html"
 TIMEOUT = 30
 
-mcp = _Server(
-    "ceorater",
-    version=__version__,
+# The API rate-limits by IP. The hosted server makes every user's calls from
+# the same few Cloud Run addresses, so without this every MCP user in the world
+# would share one 100-per-15-minute bucket. When the key is set, the backend
+# gives this server its own ceiling. Local stdio installs leave it unset and
+# are limited per user, like any other caller.
+INTERNAL_KEY = os.environ.get("CEORATER_INTERNAL_KEY", "").strip()
+
+_SERVER_KWARGS: dict[str, Any] = dict(
+    name="ceorater",
     instructions=(
         "CEO performance for 500+ US public companies: how the stock did over "
         "each CEO's tenure, what the S&P 500 did over that same window, how long "
@@ -48,20 +58,44 @@ mcp = _Server(
         "no ratings or scores, and no investment recommendations."
     ),
 )
+if _MCP2:
+    _SERVER_KWARGS["version"] = __version__
+else:
+    # 1.x decides at construction, from `host`, whether to reject requests whose
+    # Host header is not localhost. The default host is 127.0.0.1, which would
+    # answer every request to mcp.ceorater.com with 421. 2.x takes the same
+    # settings as arguments to streamable_http_app() instead; see main().
+    _SERVER_KWARGS.update(host="0.0.0.0", stateless_http=True, json_response=True)
+
+mcp = _Server(**_SERVER_KWARGS)
+
+if not _MCP2:
+    # No `version` argument on 1.x -- 1.0.1 and 1.0.2 passed one and so failed
+    # at import on every 1.x install. The low-level server reports this attribute
+    # at initialize, and the mcp package's own version while it is None.
+    mcp._mcp_server.version = __version__
+
+
+def _retry_hint(resp: httpx.Response) -> str:
+    # The API sends Retry-After on 429 (and RateLimit-Reset on every response).
+    # Passing the number on lets the agent wait once instead of retrying blind.
+    secs = resp.headers.get("retry-after") or resp.headers.get("ratelimit-reset")
+    return f" Retry in {secs} seconds." if secs and secs.isdigit() else ""
 
 
 async def _call(path: str, params: dict | None = None) -> Any:
     params = {k: v for k, v in (params or {}).items() if v is not None}
+    headers = {"X-CEORater-Internal": INTERNAL_KEY} if INTERNAL_KEY else {}
     try:
         async with httpx.AsyncClient(timeout=TIMEOUT) as client:
-            resp = await client.get(f"{API_BASE}{path}", params=params)
+            resp = await client.get(f"{API_BASE}{path}", params=params, headers=headers)
     except httpx.HTTPError as exc:
         return f"Could not reach the CEORater API: {exc}"
 
     if resp.status_code == 404:
         return "Not found in CEORater coverage."
     if resp.status_code == 429:
-        return "Rate limited: 100 requests per 15 minutes per IP. Wait for the window to roll."
+        return "Rate limited by the CEORater API." + _retry_hint(resp)
     if resp.status_code == 503:
         return "CEORater data is temporarily unavailable."
     if resp.status_code >= 400:
@@ -179,19 +213,37 @@ for _tool in (ceo_lookup, ceo_list, ceo_search):
         _tool.__doc__ = _tool.__doc__.replace("{note}", FIELD_NOTE)
 
 
+# Only reachable in HTTP mode. /mcp answers a bare GET with an error by design
+# (it wants a JSON-RPC POST), so Cloud Run's startup probe and any uptime check
+# get a route of their own, and a person who pastes the hostname into a browser
+# gets a sentence instead of a 4xx.
+@mcp.custom_route("/health", methods=["GET"], include_in_schema=False)
+async def _health(_: Request) -> JSONResponse:
+    return JSONResponse({"status": "ok", "version": __version__})
+
+
+@mcp.custom_route("/", methods=["GET"], include_in_schema=False)
+async def _root(_: Request) -> PlainTextResponse:
+    return PlainTextResponse(
+        f"CEORater MCP server {__version__}.\n"
+        "MCP endpoint: POST /mcp (streamable HTTP). "
+        f"Docs: {DOCS_URL}\n"
+    )
+
+
 def main():
     transport = os.environ.get("MCP_TRANSPORT", "stdio").strip().lower()
     if transport in ("http", "streamable-http"):
         import uvicorn
 
         port = int(os.environ.get("PORT", "8080"))
-        # Stateless: no session affinity required, safe behind Cloud Run.
-        # 2.x takes it as an argument; 1.x read it off a settings object.
+        # Stateless, so any instance answers any request and Cloud Run needs no
+        # session affinity. Plain JSON replies rather than event streams: every
+        # tool here answers in one shot, and JSON survives any proxy in between.
         if _MCP2:
-            app = mcp.streamable_http_app(stateless_http=True, host="0.0.0.0")
+            app = mcp.streamable_http_app(stateless_http=True, json_response=True, host="0.0.0.0")
         else:
-            mcp.settings.stateless_http = True
-            app = mcp.streamable_http_app()
+            app = mcp.streamable_http_app()  # settings were fixed at construction
         uvicorn.run(app, host="0.0.0.0", port=port)
     else:
         mcp.run()

@@ -10,7 +10,27 @@ US public companies.
 
 ---
 
-## Install
+## Connect from the web
+
+The server runs at one public URL. Paste it wherever your client asks for a
+remote MCP server — no login, nothing to install:
+
+```
+https://mcp.ceorater.com/mcp
+```
+
+| Client | Where |
+|---|---|
+| Claude.ai | Settings → Connectors → Add custom connector |
+| ChatGPT | Settings → Connectors → Create (developer mode) |
+| Claude Code | `claude mcp add --transport http ceorater https://mcp.ceorater.com/mcp` |
+| Cursor | `"ceorater": { "url": "https://mcp.ceorater.com/mcp" }` in `mcp.json` |
+
+Streamable HTTP, stateless. `GET /health` answers 200 when it is up.
+
+---
+
+## Install locally instead
 
 Needs Python 3.10 or newer.
 
@@ -115,6 +135,11 @@ each return two people with their own start dates and returns, which is why
 
 ---
 
+## Upgrading from 1.0.x
+
+1.0.1 and 1.0.2 fail at import on every `mcp` 1.x install (`unexpected keyword
+argument 'version'`). 1.1.0 runs on 1.27.1 and later, and on 2.x.
+
 ## Upgrading from 0.x
 
 Version 0.x required a `CEORATER_API_KEY` and called a paid API that no longer
@@ -128,14 +153,19 @@ overstated every multi-year record. What remains is reported figures only.
 
 ---
 
-## Running it as a remote server
+## Running your own remote server
 
 ```
 MCP_TRANSPORT=http PORT=8080 ceorater-mcp
 ```
 
 Serves streamable HTTP, stateless, so it sits behind Cloud Run or similar
-without session affinity. No per-user credentials to manage.
+without session affinity. No per-user credentials to manage. The `Dockerfile`
+and `cloudbuild.yaml` here are what build and deploy mcp.ceorater.com.
+
+The API rate-limits by IP, and a shared server makes every user's calls from
+one address. mcp.ceorater.com carries a key the API recognises; a server you
+run yourself shares the ordinary per-IP limit across everyone using it.
 
 ---
 

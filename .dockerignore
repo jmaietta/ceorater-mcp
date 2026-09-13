@@ -1,0 +1,7 @@
+.git
+.gitignore
+build
+dist
+*.egg-info
+__pycache__
+cloudbuild.yaml
